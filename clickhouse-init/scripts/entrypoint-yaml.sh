@@ -1,12 +1,13 @@
 #!/bin/bash
 
 
-click_custom_config="/tmp/config.yaml"
+click_custom_config="/tmp/macros.yaml"
+macros="macros.yaml"
 
-SHARD=$(yq eval ".[${POD_NAME}].SHARD" pods.yaml)
-REPLICA=$(yq eval ".[${POD_NAME}].REPLICA" pods.yaml)
-CLUSTER=$(yq eval ".[${POD_NAME}].CLUSTER" pods.yaml)
-INSTALLATION=$(yq eval ".[${POD_NAME}].INSTALLATION" pods.yaml)
+SHARD=$(yq eval ".[${CLICKHOUSE_POD_NAME}].SHARD" $macros)
+REPLICA=$(yq eval ".[${CLICKHOUSE_POD_NAME}].REPLICA" $macros)
+CLUSTER=$(yq eval ".[${CLICKHOUSE_POD_NAME}].CLUSTER" $macros)
+INSTALLATION=$(yq eval ".[${CLICKHOUSE_POD_NAME}].INSTALLATION" $macros)
 
 cat <<EOF > $click_custom_config
       macros:
@@ -17,7 +18,7 @@ cat <<EOF > $click_custom_config
 EOF
 
 
-chop="/tmp/chop-generated-hostname-ports.yaml"
+chop="/tmp/hostname-ports.yaml"
 cat <<EOF > $chop
       listen_host:
         - "::"
@@ -41,5 +42,7 @@ cat <<EOF > $keeper
           host: clickhouse-keeper.click-keeper
           port: 2181
 EOF
+
+cp "/tmp/config/ch-cluster.yaml" "/tmp/ch-cluster.yaml"
 
 
