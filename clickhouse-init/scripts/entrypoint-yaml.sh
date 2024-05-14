@@ -3,19 +3,18 @@
 
 click_custom_config="/tmp/config.yaml"
 
-export CLUSTER="click_arman"
-export INSTALLATION="clickhouse"
+SHARD=$(yq eval ".[${POD_NAME}].SHARD" pods.yaml)
+REPLICA=$(yq eval ".[${POD_NAME}].REPLICA" pods.yaml)
+CLUSTER=$(yq eval ".[${POD_NAME}].CLUSTER" pods.yaml)
+INSTALLATION=$(yq eval ".[${POD_NAME}].INSTALLATION" pods.yaml)
 
-
-if [ "$POD_NAME" == "click-stand-0" ]; then
-  SHARD="1"
-  REPLICA="1"
-  echo "Pod1->>>>"
-elif [ "$POD_NAME" == "click-stand-1" ]; then
-  SHARD="1"
-  REPLICA="2"
-  echo "Pod2->>>>"
-fi
+cat <<EOF > $click_custom_config
+      macros:
+        shard: "${SHARD}"
+        replica: "${REPLICA}"
+        cluster: "${CLUSTER}"
+        installation: "${INSTALLATION}"
+EOF
 
 
 chop="/tmp/chop-generated-hostname-ports.yaml"
@@ -34,22 +33,6 @@ cat <<EOF > $chop
       tcp_port: 9000
 EOF
 
-server="/tmp/remote-servers.yaml"
-cat <<EOF > $server
-      remote_servers:
-        "@replace": replace
-        click_arman:
-          secret: mysecretphrase
-          shard:
-            internal_replication: true
-            replica:
-              host: click-stand-0.click-pods.click.svc.cluster.local
-              port: 9000
-            replica:
-              host: click-stand-1.click-pods.click.svc.cluster.local
-              port: 9000
-EOF
-
 keeper="/tmp/use-keeper.yaml"
 cat <<EOF > $keeper
       zookeeper:
@@ -59,10 +42,4 @@ cat <<EOF > $keeper
           port: 2181
 EOF
 
-cat <<EOF > $click_custom_config
-      macros:
-        shard: "${SHARD}"
-        replica: "${REPLICA}"
-        cluster: "${CLUSTER}"
-        installation: "${INSTALLATION}"
-EOF
+
