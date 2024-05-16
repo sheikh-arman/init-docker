@@ -1,24 +1,28 @@
 #!/bin/bash
 
+macros="/ch-tmp/macros.yaml"
+chop="/ch-tmp/hostname-ports.yaml"
+keeper="/ch-tmp/use-keeper.yaml"
 
-click_custom_config="/tmp/macros.yaml"
-macros="macros.yaml"
 
-SHARD=$(yq eval ".[${CLICKHOUSE_POD_NAME}].SHARD" $macros)
-REPLICA=$(yq eval ".[${CLICKHOUSE_POD_NAME}].REPLICA" $macros)
-CLUSTER=$(yq eval ".[${CLICKHOUSE_POD_NAME}].CLUSTER" $macros)
-INSTALLATION=$(yq eval ".[${CLICKHOUSE_POD_NAME}].INSTALLATION" $macros)
+if [ -z "${CLICKHOUSE_TOPOLOGY}" ]; then
+  echo "CLICKHOUSE_TOPOLOGY is not set"
+else
+  if [ "${CLICKHOUSE_TOPOLOGY}" = "standalone" ]; then
+    echo "CLICKHOUSE_TOPOLOGY is set to ${CLICKHOUSE_TOPOLOGY}"
+    exit 0
+  fi
+fi
 
-cat <<EOF > $click_custom_config
+CLICKHOUSE_REPLICA=$(echo "$CLICKHOUSE_POD_NAME" | grep -oE '[0-9]+' | tail -1)
+((CLICKHOUSE_REPLICA++))
+cat <<EOF > $macros
       macros:
-        shard: "${SHARD}"
-        replica: "${REPLICA}"
-        cluster: "${CLUSTER}"
-        installation: "${INSTALLATION}"
+        shard: "${CLICKHOUSE_SHARD}"
+        replica: "${CLICKHOUSE_REPLICA}"
+        cluster: "${CLICKHOUSE_CLUSTER}"
+        installation: "${CLICKHOUSE_INSTALLATION}"
 EOF
-
-
-chop="/tmp/hostname-ports.yaml"
 cat <<EOF > $chop
       listen_host:
         - "::"
@@ -33,8 +37,6 @@ cat <<EOF > $chop
       http_port: 8123
       tcp_port: 9000
 EOF
-
-keeper="/tmp/use-keeper.yaml"
 cat <<EOF > $keeper
       zookeeper:
         "@replace": replace
@@ -43,6 +45,4 @@ cat <<EOF > $keeper
           port: 2181
 EOF
 
-cp "/tmp/config/ch-cluster.yaml" "/tmp/ch-cluster.yaml"
-
-
+echo "Config Files Generated Successfully !!!"
